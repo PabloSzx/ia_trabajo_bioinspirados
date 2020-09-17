@@ -6,6 +6,7 @@ import Head from "next/head";
 
 import { ChakraProvider, theme } from "@chakra-ui/core";
 import { merge } from "@chakra-ui/utils";
+import { Navigation } from "../components/Navigation";
 
 const chakraTheme = merge(theme, {});
 
@@ -16,6 +17,7 @@ const App: NextPage<AppProps> = ({ Component, pageProps }) => {
         <title>IA Algoritmos Bioinspirados</title>
       </Head>
       <ChakraProvider resetCSS theme={chakraTheme}>
+        <Navigation />
         <Component {...pageProps} />
       </ChakraProvider>
     </>
