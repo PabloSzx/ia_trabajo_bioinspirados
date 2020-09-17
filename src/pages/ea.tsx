@@ -1,4 +1,4 @@
-import { random } from "lodash";
+import { random, range } from "lodash";
 import { Circle, Layer, Stage } from "react-konva";
 import { createStore } from "react-state-selector";
 
@@ -7,27 +7,25 @@ import { Box, Flex, Stack, useColorModeValue } from "@chakra-ui/core";
 const width = 700;
 const height = 700;
 
-export const EAStore = createStore({
-  data: [
-    {
-      a: random(0, height),
+export const EAStore = createStore(
+  {
+    data: range(0, height).map((a) => ({
+      a,
       b: random(0, width),
+    })),
+  },
+  {
+    actions: {
+      changeRandom: () => (draft) => {
+        draft.data[random(0, height - 1)].b = random(0, width);
+      },
     },
-    {
-      a: random(0, height),
-      b: random(0, width),
-    },
-  ],
-});
+  }
+);
 
 setInterval(() => {
-  EAStore.produce((draft) => {
-    draft.data.push({
-      a: random(0, height),
-      b: random(0, width),
-    });
-  });
-}, 1000);
+  EAStore.actions.changeRandom();
+}, 10);
 
 const EAPage = () => {
   const data = EAStore.useStore().data;
