@@ -1,6 +1,7 @@
-import { Flex, Tab, TabList, Tabs } from "@chakra-ui/core";
 import { useRouter } from "next/router";
-import { useState } from "react";
+import { useEffect } from "react";
+
+import { Flex, Tab, TabList, Tabs } from "@chakra-ui/core";
 
 const Routes: {
   name: string;
@@ -29,8 +30,12 @@ const Routes: {
 ];
 
 export const Navigation = () => {
-  const { pathname, push } = useRouter();
+  const { pathname, push, prefetch } = useRouter();
   const tabIndex = Routes.findIndex((v) => v.pathname === pathname);
+
+  useEffect(() => {
+    Routes.forEach(({ pathname }) => prefetch(pathname));
+  }, [prefetch]);
 
   return (
     <Flex width="100%" justifyContent="center">
