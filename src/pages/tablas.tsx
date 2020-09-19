@@ -8,10 +8,10 @@ import {
   TableHeader,
   TableRow,
 } from "../components/Table";
-import { EAStore } from "./ea";
+import { PSOStore } from "./pso";
 
 const TablasPage = () => {
-  const data = EAStore.useStore().data;
+  const data = PSOStore.hooks.useBestHistory();
   return (
     <Stack alignItems="center">
       <Text>Tablas</Text>
@@ -20,19 +20,27 @@ const TablasPage = () => {
           <TableHead>
             <TableRow>
               <TableHeader cursor="pointer" onClick={() => {}}>
-                A
+                X1
               </TableHeader>
               <TableHeader cursor="pointer" onClick={() => {}}>
-                B
+                X2
+              </TableHeader>
+              <TableHeader cursor="pointer" onClick={() => {}}>
+                Fitness
+              </TableHeader>
+              <TableHeader cursor="pointer" onClick={() => {}}>
+                Evals
               </TableHeader>
             </TableRow>
           </TableHead>
           <TableBody>
-            {data.map(({ a, b }, key) => {
+            {data.map(({ bestX1, bestX2, bestY, nEvals }, key) => {
               return (
                 <TableRow key={key}>
-                  <TableCell>{a}</TableCell>
-                  <TableCell>{b}</TableCell>
+                  <TableCell>{bestX1}</TableCell>
+                  <TableCell>{bestX2}</TableCell>
+                  <TableCell>{bestY}</TableCell>
+                  <TableCell>{nEvals}</TableCell>
                 </TableRow>
               );
             })}

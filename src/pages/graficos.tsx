@@ -1,3 +1,4 @@
+import { round } from "lodash";
 import {
   CartesianGrid,
   Legend,
@@ -14,7 +15,7 @@ import { Flex, Stack, useColorModeValue } from "@chakra-ui/core";
 import { PSOStore } from "./pso";
 
 const GraficosPage = () => {
-  const data = PSOStore.useStore().data;
+  const data = PSOStore.hooks.useBestHistory();
 
   const tooltipLabelColor = useColorModeValue(undefined, "black");
 
@@ -24,16 +25,26 @@ const GraficosPage = () => {
         <ResponsiveContainer height={300} width="80%">
           <LineChart data={data}>
             <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey={(d) => d.a} />
-            <YAxis dataKey={(d) => d.b} domain={[0, "dataMax"]} />
+            <XAxis
+              dataKey={(d) => d.nEvals}
+              name="Numero de evaluaciones"
+              axisLine
+              type="category"
+              unit=" evaluaciones"
+            />
+            <YAxis
+              dataKey={(d) => round(d.bestY, 2)}
+              allowDecimals
+              domain={[0, "dataMax"]}
+            />
             <Tooltip labelStyle={{ color: tooltipLabelColor }} />
             <Legend />
             <Line
               type="monotone"
-              dataKey={(d) => d.b}
+              dataKey={(d) => d.bestY}
               activeDot={{ r: 8 }}
               stroke="#666"
-              name="B"
+              name="Fitness"
             />
           </LineChart>
         </ResponsiveContainer>
