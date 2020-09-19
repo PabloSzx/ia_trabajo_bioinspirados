@@ -1,6 +1,6 @@
 import { minBy, range } from "lodash";
 import { Fragment, memo } from "react";
-import { Circle, Layer, Line, Stage } from "react-konva";
+import { Circle, Layer, Line, Stage, Text as KonvaText } from "react-konva";
 import { createSelector, createStore } from "react-state-selector";
 
 import {
@@ -206,29 +206,41 @@ if (typeof window !== "undefined")
     PSOStore.actions.tick();
   }, 20);
 
+function getRelativePosToCanvas(v: number) {
+  return v * 67 + 350;
+}
+
 const Canvas = memo(() => {
-  const data = PSOStore.hooks.useData();
+  const { data, bestX1, bestX2, bestY } = PSOStore.useStore();
   return (
     <Stage width={width} height={height}>
       <Layer>
-        {data
-          .map((v) => ({
-            ...v,
-            x1: v.x1 * 67 + 350,
-            x2: v.x2 * 67 + 350,
-          }))
-          .map((v, index) => {
-            return (
-              <Fragment key={index}>
-                <Circle key={index} x={v.x1} y={v.x2} fill="green" radius={4} />
-                <Line
-                  key={index}
-                  points={[v.x1, v.x2, v.x1 - 50 * v.vx1, v.x2 - 50 * v.vx2]}
-                  stroke="green"
-                />
-              </Fragment>
-            );
-          })}
+        <Circle
+          x={getRelativePosToCanvas(bestX1)}
+          y={getRelativePosToCanvas(bestX2)}
+          fill="red"
+          radius={6}
+        />
+        <KonvaText
+          x={getRelativePosToCanvas(bestX1) + 10}
+          y={getRelativePosToCanvas(bestX2)}
+          fill="red"
+          text={bestY.toFixed(5)}
+        />
+        {data.map((v, index) => {
+          const x1 = getRelativePosToCanvas(v.x1);
+          const x2 = getRelativePosToCanvas(v.x2);
+
+          return (
+            <Fragment key={index}>
+              <Circle x={x1} y={x2} fill="green" radius={4} />
+              <Line
+                points={[x1, x2, x1 - 50 * v.vx1, x2 - 50 * v.vx2]}
+                stroke="green"
+              />
+            </Fragment>
+          );
+        })}
       </Layer>
     </Stage>
   );
