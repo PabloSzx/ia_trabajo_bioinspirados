@@ -26,6 +26,7 @@ const height = 700;
 
 export const PSOStore = createStore(
   {
+    n: 100,
     inertia: 50,
     maxVelocity: 3.5,
     data: [] as {
@@ -68,7 +69,8 @@ export const PSOStore = createStore(
           PSOStore.actions.init();
         }, 0);
       },
-      init: (n = 100) => (draft) => {
+      init: (n?: number) => (draft) => {
+        n = draft.n = n ?? draft.n;
         draft.data = range(0, n).map(() => {
           const x1 = getRandomX();
           const x2 = getRandomX();
@@ -182,12 +184,33 @@ if (typeof window !== "undefined")
   }, 20);
 
 const PSOPage = () => {
-  const { data, inertia, maxVelocity } = PSOStore.useStore();
+  const { data, inertia, maxVelocity, n } = PSOStore.useStore();
 
   const bg = useColorModeValue(undefined, "white");
   const border = useColorModeValue("1px solid black", undefined);
   return (
     <Stack>
+      <Flex paddingTop="10px" direction="column" alignItems="center">
+        <Box shadow="md" borderWidth="1px" padding="10px" borderRadius="5px">
+          <Text textAlign="center">
+            N: <b>{n}</b>
+          </Text>
+          <Slider
+            colorScheme="orange"
+            width="200px"
+            value={n}
+            onChange={PSOStore.actions.init}
+            min={2}
+            max={500}
+            step={1}
+          >
+            <SliderTrack>
+              <SliderFilledTrack />
+            </SliderTrack>
+            <SliderThumb />
+          </Slider>
+        </Box>
+      </Flex>
       <Flex paddingTop="10px" direction="column" alignItems="center">
         <Box shadow="md" borderWidth="1px" padding="10px" borderRadius="5px">
           <Text textAlign="center">
