@@ -34,7 +34,8 @@
     "react-konva": "^16.13.0-6",
     "react-state-selector": "^2.0.0",
     "react-use": "^15.3.4",
-    "recharts": "^1.8.5"
+    "recharts": "^1.8.5",
+    "waait": "^1.0.5"
   },
   "devDependencies": {
     "@types/concurrently": "^5.2.1",

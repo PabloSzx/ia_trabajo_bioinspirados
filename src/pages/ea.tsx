@@ -1,47 +1,256 @@
-import { random, range } from "lodash";
-import { Circle, Layer, Stage } from "react-konva";
+import { chunk, compact, minBy, random, range, sampleSize } from "lodash";
+import { Fragment } from "react";
+import { Circle, Layer, Stage, Text as KonvaText } from "react-konva";
 import { createStore } from "react-state-selector";
+import wait from "waait";
 
-import { Box, Flex, Stack, useColorModeValue } from "@chakra-ui/core";
+import {
+  Box,
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  Flex,
+  Stack,
+  Text,
+  useColorModeValue,
+} from "@chakra-ui/core";
+
+import { calcRastrigin, getRandomX, limitX } from "../utils/Rastrigin";
 
 const width = 700;
 const height = 700;
 
+interface Elem {
+  id: number;
+  x1: number;
+  x2: number;
+  fitness: number;
+}
+
+enum EAStep {
+  Inicio = "Inicio",
+  Seleccion = "Selección",
+  Cruzamiento = "Cruzamiento",
+  Mutacion = "Mutación",
+  Reinsercion = "Reinserción",
+}
+
 export const EAStore = createStore(
   {
-    data: range(0, height).map((a) => ({
-      a,
-      b: random(0, width),
-    })),
+    step: EAStep.Inicio,
+    idCounter: 0,
+    n: 12,
+    generacion: 0,
+    data: [] as Elem[],
+    selected: [] as Elem[],
+    nuevos: [] as Elem[],
+    bestFitness: {
+      generacion: 0,
+      elem: { id: -1, x1: 0, x2: 0, fitness: Infinity },
+    },
+    bestFitnessHistory: [] as { generacion: number; elem: Elem }[],
   },
   {
     actions: {
-      changeRandom: () => (draft) => {
-        draft.data[random(0, height - 1)].b = random(0, width);
+      init: (n?: number) => (draft) => {
+        draft.step = EAStep.Inicio;
+        n = draft.n = n ?? draft.n;
+        let idCounter = 0;
+        draft.data = range(0, n).map(() => {
+          const x1 = getRandomX();
+          const x2 = getRandomX();
+          const fitness = calcRastrigin(x1, x2);
+          const elem = {
+            id: ++idCounter,
+            x1,
+            x2,
+            fitness,
+          };
+          if (fitness < draft.bestFitness.elem.fitness) {
+            draft.bestFitness.elem = {
+              ...elem,
+            };
+          }
+          return elem;
+        });
+        draft.bestFitness.generacion = 1;
+        draft.bestFitnessHistory = [
+          {
+            ...draft.bestFitness,
+          },
+        ];
+        draft.idCounter = idCounter;
+        draft.generacion = 1;
+      },
+      seleccion: () => (draft) => {
+        draft.step = EAStep.Seleccion;
+        draft.selected = sampleSize(draft.data, draft.n / 2);
+      },
+      cruzamiento: () => (draft) => {
+        draft.step = EAStep.Cruzamiento;
+        draft.nuevos = compact(
+          chunk(draft.selected, 2).map(([v1, v2]) => {
+            if (v2 == null) return null;
+            const x1 = (v1.x1 + v2.x1) / 2;
+            const x2 = (v1.x2 + v2.x2) / 2;
+            return {
+              id: ++draft.idCounter,
+              x1,
+              x2,
+              fitness: calcRastrigin(x1, x2),
+            };
+          })
+        );
+      },
+      mutacion: () => (draft) => {
+        draft.step = EAStep.Mutacion;
+        draft.nuevos = draft.nuevos.map((v) => {
+          if (random(0, 100) <= 1) {
+            if (random(0, 1) === 0) {
+              v.x1 = limitX(v.x1 + getRandomX());
+            } else {
+              v.x2 = limitX(v.x2 + getRandomX());
+            }
+            v.fitness = calcRastrigin(v.x1, v.x2);
+          }
+          return v;
+        });
+      },
+      reinsercion: () => (draft) => {
+        draft.generacion++;
+        draft.step = EAStep.Reinsercion;
+
+        const all = [...draft.data, ...draft.nuevos];
+        const best = minBy(all, (v) => v.fitness);
+        if (best && best.fitness < draft.bestFitness.elem.fitness) {
+          draft.bestFitness = {
+            elem: { ...best },
+            generacion: draft.generacion,
+          };
+          draft.bestFitnessHistory.push(draft.bestFitness);
+        }
+        draft.data = sampleSize(all, draft.n);
+        draft.selected = [];
+        draft.nuevos = [];
       },
     },
   }
 );
 
-setInterval(() => {
-  EAStore.actions.changeRandom();
-}, 10);
+typeof window !== "undefined" &&
+  (async () => {
+    const {
+      init,
+      seleccion,
+      cruzamiento,
+      mutacion,
+      reinsercion,
+    } = EAStore.actions;
+
+    init(50);
+    while (true) {
+      await wait(500);
+      seleccion();
+      await wait(500);
+      cruzamiento();
+      await wait(500);
+      mutacion();
+      await wait(500);
+      reinsercion();
+      await wait(500);
+    }
+  })();
+
+function getRelativePosToCanvas(v: number) {
+  return v * 67 + 350;
+}
 
 const EAPage = () => {
-  const data = EAStore.useStore().data;
+  const {
+    data,
+    selected,
+    nuevos,
+    step,
+    bestFitness,
+    generacion,
+  } = EAStore.useStore();
 
   const bg = useColorModeValue(undefined, "white");
   const border = useColorModeValue("1px solid black", undefined);
 
   return (
     <Stack>
-      <Flex justifyContent="center" paddingTop="20px">
+      <Flex justifyContent="center">
+        <Breadcrumb>
+          {Object.values(EAStep).map((v) => {
+            return (
+              <BreadcrumbItem key={v}>
+                <BreadcrumbLink fontWeight={v === step ? "bold" : undefined}>
+                  {v}
+                </BreadcrumbLink>
+              </BreadcrumbItem>
+            );
+          })}
+        </Breadcrumb>
+      </Flex>
+      <Flex justifyContent="center">
+        <Text>
+          Generación: <b>{generacion}</b>
+        </Text>
+      </Flex>
+      <Flex justifyContent="center">
         <Box bg={bg} border={border}>
           <Stage width={width} height={height}>
             <Layer>
-              {data.map((v, index) => {
+              <Circle
+                x={getRelativePosToCanvas(bestFitness.elem.x1)}
+                y={getRelativePosToCanvas(bestFitness.elem.x2)}
+                fill="red"
+                radius={6}
+              />
+              <KonvaText
+                x={getRelativePosToCanvas(bestFitness.elem.x1) + 10}
+                y={getRelativePosToCanvas(bestFitness.elem.x2)}
+                fill="red"
+                text={bestFitness.elem.fitness.toFixed(5)}
+              />
+              <KonvaText
+                x={getRelativePosToCanvas(bestFitness.elem.x1) + 10}
+                y={getRelativePosToCanvas(bestFitness.elem.x2) + 10}
+                fill="red"
+                text={"Generación " + bestFitness.generacion.toString()}
+              />
+              {data.map(({ x1, x2, id, fitness }) => {
+                x1 = getRelativePosToCanvas(x1);
+                x2 = getRelativePosToCanvas(x2);
+                const fill = selected.find((v) => v.id === id)
+                  ? "blue"
+                  : "green";
                 return (
-                  <Circle key={index} x={v.a} y={v.b} fill="red" radius={2} />
+                  <Fragment key={id}>
+                    <Circle x={x1} y={x2} fill={fill} radius={2} />
+                    <KonvaText
+                      x={x1 + 5}
+                      y={x2 + 5}
+                      fill={fill}
+                      text={fitness.toFixed(4)}
+                    />
+                  </Fragment>
+                );
+              })}
+              {nuevos.map(({ x1, x2, id, fitness }) => {
+                x1 = getRelativePosToCanvas(x1);
+                x2 = getRelativePosToCanvas(x2);
+                return (
+                  <Fragment key={id}>
+                    <Circle x={x1} y={x2} fill="cyan" radius={2} />
+                    <KonvaText
+                      x={x1 + 5}
+                      y={x2 + 5}
+                      fill="cyan"
+                      text={fitness.toFixed(4)}
+                    />
+                  </Fragment>
                 );
               })}
             </Layer>

@@ -318,7 +318,7 @@ const PSOPage = () => {
         </Box>
       </Flex>
 
-      <Flex justifyContent="center" paddingTop="20px">
+      <Flex justifyContent="center" paddingTop="10px">
         <Box bg={bg} border={border}>
           <Canvas />
         </Box>
