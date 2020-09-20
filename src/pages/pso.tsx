@@ -19,6 +19,7 @@ import {
   calcRastrigin,
   getRandomPercent,
   getRandomX,
+  limitX,
 } from "../utils/Rastrigin";
 
 const width = 700;
@@ -153,16 +154,8 @@ export const PSOStore = createStore(
           x1 += vx1;
           x2 += vx2;
 
-          if (x1 > 5.12) {
-            x1 = 5.12;
-          } else if (x1 < -5.12) {
-            x1 = -5.12;
-          }
-          if (x2 > 5.12) {
-            x2 = 5.12;
-          } else if (x2 < -5.12) {
-            x2 = -5.12;
-          }
+          x1 = limitX(x1);
+          x2 = limitX(x2);
 
           const fitness = calcRastrigin(x1, x2);
 
