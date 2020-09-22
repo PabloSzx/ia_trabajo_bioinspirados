@@ -1,6 +1,13 @@
 import { minBy, range } from "lodash";
 import { Fragment, memo } from "react";
-import { Circle, Layer, Line, Stage, Text as KonvaText } from "react-konva";
+import {
+  Circle,
+  Layer,
+  Line,
+  Stage,
+  Rect,
+  Text as KonvaText,
+} from "react-konva";
 import { createSelector, createStore } from "react-state-selector";
 
 import {
@@ -27,13 +34,13 @@ const height = 700;
 
 export const PSOStore = createStore(
   {
-    n: 100,
+    n: 2,
     inertia: 50,
     maxVelocity: 3.5,
     data: [] as {
       x1: number;
       x2: number;
-      y: number;
+      fitness: number;
       vx1: number;
       vx2: number;
       bestPersonalx1: number;
@@ -91,7 +98,7 @@ export const PSOStore = createStore(
           const x1 = getRandomX();
           const x2 = getRandomX();
 
-          const y = calcRastrigin(x1, x2);
+          const fitness = calcRastrigin(x1, x2);
 
           const bestPersonalx1 = x1;
           const bestPersonalx2 = x2;
@@ -99,7 +106,7 @@ export const PSOStore = createStore(
           return {
             x1,
             x2,
-            y,
+            fitness,
             vx1: 0,
             vx2: 0,
             bestPersonalx1,
@@ -154,8 +161,8 @@ export const PSOStore = createStore(
           x1 += vx1;
           x2 += vx2;
 
-          x1 = limitX(x1);
-          x2 = limitX(x2);
+          [x1, vx1] = limitX(x1, vx1);
+          [x2, vx2] = limitX(x2, vx2);
 
           const fitness = calcRastrigin(x1, x2);
 
@@ -165,6 +172,7 @@ export const PSOStore = createStore(
             value.bestPersonalx2 = x2;
           }
 
+          //console.log(fitness,draft.bestY);
           if (fitness < draft.bestY) {
             draft.bestY = fitness;
             draft.bestX1 = value.bestPersonalx1;
@@ -175,6 +183,7 @@ export const PSOStore = createStore(
 
           value.x1 = x1;
           value.x2 = x2;
+          value.fitness = fitness;
           value.vx1 = vx1;
           value.vx2 = vx2;
         }
@@ -192,12 +201,12 @@ export const PSOStore = createStore(
   }
 );
 
-PSOStore.actions.init(100);
+PSOStore.actions.init(2);
 
 if (typeof window !== "undefined")
   setInterval(() => {
     PSOStore.actions.tick();
-  }, 20);
+  }, 300);
 
 function getRelativePosToCanvas(v: number) {
   return v * 67 + 350;
@@ -208,6 +217,19 @@ const Canvas = memo(() => {
   return (
     <Stage width={width} height={height}>
       <Layer>
+        <Rect
+          x={getRelativePosToCanvas(0) - 10}
+          y={getRelativePosToCanvas(0) - 10}
+          width={20}
+          height={20}
+          fill="green"
+        />
+        <Circle
+          x={getRelativePosToCanvas(0)}
+          y={getRelativePosToCanvas(0)}
+          fill="blue"
+          radius={6}
+        />
         <Circle
           x={getRelativePosToCanvas(bestX1)}
           y={getRelativePosToCanvas(bestX2)}
@@ -231,6 +253,7 @@ const Canvas = memo(() => {
                 points={[x1, x2, x1 - 50 * v.vx1, x2 - 50 * v.vx2]}
                 stroke="green"
               />
+              <KonvaText x={x1} y={x2} fill="red" text={v.fitness.toFixed(5)} />
             </Fragment>
           );
         })}

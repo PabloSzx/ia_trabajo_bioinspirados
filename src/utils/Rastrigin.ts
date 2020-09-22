@@ -16,12 +16,12 @@ export function getRandomPercent() {
   return random(0, 1, true);
 }
 
-export function limitX(v: number) {
-  if (v > 5.12) {
-    return 5.12;
+export function limitX(x: number, v: number): [number, number] {
+  if (x > 5.12) {
+    return [5.12, -v];
   }
-  if (v < -5.12) {
-    return -5.12;
+  if (x < -5.12) {
+    return [-5.12, -v];
   }
-  return v;
+  return [x, v];
 }
