@@ -24,12 +24,13 @@ import {
 
 const width = 700;
 const height = 700;
-
 export const PSOStore = createStore(
   {
     n: 100,
-    inertia: 50,
-    maxVelocity: 3.5,
+    inertia: 2000,
+    maxVelocity: 3,
+    C1: 30,
+    C2: 10,
     data: [] as {
       x1: number;
       x2: number;
@@ -57,11 +58,15 @@ export const PSOStore = createStore(
         (state) => state.inertia,
         (state) => state.maxVelocity,
         (state) => state.n,
-        (inertia, maxVelocity, n) => {
+        (state) => state.C1,
+        (state) => state.C2,
+        (inertia, maxVelocity, n,C1,C2) => {
           return {
             inertia,
             maxVelocity,
             n,
+            C1,
+            C2,
           };
         }
       ),
@@ -81,6 +86,18 @@ export const PSOStore = createStore(
       },
       setMaxVelocity: (n: number) => (draft) => {
         draft.maxVelocity = n;
+        setTimeout(() => {
+          PSOStore.actions.init();
+        }, 0);
+      },
+      setC1: (n: number) => (draft) => {
+        draft.C1 = n;
+        setTimeout(() => {
+          PSOStore.actions.init();
+        }, 0);
+      },
+      setC2: (n: number) => (draft) => {
+        draft.C2 = n;
         setTimeout(() => {
           PSOStore.actions.init();
         }, 0);
@@ -127,6 +144,8 @@ export const PSOStore = createStore(
       tick: () => (draft) => {
         const inertia = draft.inertia;
         const maxVelocity = draft.maxVelocity;
+        const C1 = draft.C1;
+        const C2 = draft.C2;
         draft.nEvals += 1;
 
         let fitnessImproved = false;
@@ -135,17 +154,15 @@ export const PSOStore = createStore(
           let x1 = value.x1;
           let x2 = value.x2;
 
-          let vx1 =
-            inertia * value.vx1 +
-            getRandomPercent() * (value.bestPersonalx1 - x1) +
-            getRandomPercent() * (draft.bestX1 - x1);
-          let vx2 =
-            inertia * value.vx2 +
-            getRandomPercent() * (value.bestPersonalx2 - x2) +
-            getRandomPercent() * (draft.bestX2 - x2);
-
+          let vx1 = value.vx1;
+          let vx2 = value.vx2;
+          vx1 = vx1 * inertia +
+          getRandomPercent() * C1 * (value.bestPersonalx1 - x1) +
+          getRandomPercent() * C2 * (draft.bestX1 - x1);
+          vx2 = vx2 * inertia +
+          getRandomPercent() * C1 * (value.bestPersonalx2 - x2) + 
+          getRandomPercent() * C2 * (draft.bestX2 - x2);  
           const mod = Math.sqrt(vx1 * vx1 + vx2 * vx2);
-
           if (mod > maxVelocity) {
             vx1 /= mod * maxVelocity;
             vx2 /= mod * maxVelocity;
@@ -153,9 +170,15 @@ export const PSOStore = createStore(
 
           x1 += vx1;
           x2 += vx2;
-
-          x1 = limitX(x1);
-          x2 = limitX(x2);
+          
+          if (x1 >= 5.12 || x1<=-5.12){
+            vx1 = -vx1
+          }
+          if (x2 >= 5.12 || x2<=-5.12){
+            vx2 = -vx2
+          }
+          //x1 = limitX(x1,vx1); // se agrego parametro vx1 (eje x de la visualizacion?)
+          //x2 = limitX(x2,vx2); // se agrego parametro vx2 (eje y de la visualizacion?)
 
           const fitness = calcRastrigin(x1, x2);
 
@@ -240,7 +263,7 @@ const Canvas = memo(() => {
 });
 
 const PSOPage = () => {
-  const { inertia, maxVelocity, n } = PSOStore.hooks.useMetadata();
+  const { inertia, maxVelocity, n , C1, C2} = PSOStore.hooks.useMetadata();
 
   const bg = useColorModeValue(undefined, "white");
   const border = useColorModeValue("1px solid black", undefined);
@@ -256,8 +279,8 @@ const PSOPage = () => {
             width="200px"
             value={n}
             onChange={PSOStore.actions.init}
-            min={2}
-            max={500}
+            min={1}
+            max={100}
             step={1}
           >
             <SliderTrack>
@@ -278,7 +301,7 @@ const PSOPage = () => {
             value={inertia}
             onChange={PSOStore.actions.setInertia}
             min={0}
-            max={80}
+            max={5000}
             step={1}
           >
             <SliderTrack>
@@ -302,6 +325,48 @@ const PSOPage = () => {
             min={0}
             max={7}
             step={0.25}
+          >
+            <SliderTrack>
+              <SliderFilledTrack />
+            </SliderTrack>
+            <SliderThumb />
+          </Slider>
+        </Box>
+      </Flex>
+      <Flex paddingTop="10px" direction="column" alignItems="center">
+        <Box shadow="md" borderWidth="1px" padding="10px" borderRadius="5px">
+          <Text textAlign="center">
+            C1(Individual): <b>{C1}</b>
+          </Text>
+          <Slider
+            colorScheme="cyan"
+            width="200px"
+            value={C1}
+            onChange={PSOStore.actions.setC1}
+            min={10}
+            max={100}
+            step={1}
+          >
+            <SliderTrack>
+              <SliderFilledTrack />
+            </SliderTrack>
+            <SliderThumb />
+          </Slider>
+        </Box>
+      </Flex>
+      <Flex paddingTop="10px" direction="column" alignItems="center">
+        <Box shadow="md" borderWidth="1px" padding="10px" borderRadius="5px">
+          <Text textAlign="center">
+            C2(Social): <b>{C2}</b>
+          </Text>
+          <Slider
+            colorScheme="cyan"
+            width="200px"
+            value={C2}
+            onChange={PSOStore.actions.setC2}
+            min={10}
+            max={100}
+            step={1}
           >
             <SliderTrack>
               <SliderFilledTrack />
