@@ -1,4 +1,13 @@
-import { chunk, compact, minBy, random, range, sampleSize } from "lodash";
+import {
+  chunk,
+  compact,
+  minBy,
+  random,
+  range,
+  sampleSize,
+  shuffle,
+  sortBy,
+} from "lodash";
 import { Fragment } from "react";
 import { Circle, Layer, Stage, Text as KonvaText } from "react-konva";
 import { createStore } from "react-state-selector";
@@ -84,15 +93,22 @@ export const EAStore = createStore(
       },
       seleccion: () => (draft) => {
         draft.step = EAStep.Seleccion;
-        draft.selected = sampleSize(draft.data, draft.n / 2);
+
+        draft.selected = compact(
+          range(0, draft.n / 2).map(() => {
+            const sampleData = sampleSize(draft.data, 3);
+
+            return minBy(sampleData, (v) => v.fitness);
+          })
+        );
       },
       cruzamiento: () => (draft) => {
         draft.step = EAStep.Cruzamiento;
         draft.nuevos = compact(
           chunk(draft.selected, 2).map(([v1, v2]) => {
             if (v2 == null) return null;
-            const x1 = (v1.x1 + v2.x1) / 2;
-            const x2 = (v1.x2 + v2.x2) / 2;
+            const x1 = random(Math.min(v1.x1, v2.x1), Math.max(v1.x1, v2.x1));
+            const x2 = random(Math.min(v1.x2, v2.x2), Math.max(v1.x2, v2.x2));
             return {
               id: ++draft.idCounter,
               x1,
@@ -105,7 +121,7 @@ export const EAStore = createStore(
       mutacion: () => (draft) => {
         draft.step = EAStep.Mutacion;
         draft.nuevos = draft.nuevos.map((v) => {
-          if (random(0, 100) <= 1) {
+          if (random(1, 100) <= 5) {
             if (random(0, 1) === 0) {
               v.x1 = limitX(v.x1 + getRandomX());
             } else {
@@ -129,7 +145,21 @@ export const EAStore = createStore(
           };
           draft.bestFitnessHistory.push(draft.bestFitness);
         }
-        draft.data = sampleSize(all, draft.n);
+        // draft.n = 20
+        // draft.nuevos.length = 6
+        // draft.data.length = 20;
+
+        // draft.n - draft.nuevos.length = 20 - 6 = 14
+
+        //             6            +    14  = 20
+        draft.data = [
+          ...draft.nuevos,
+          ...sortBy(draft.data, (v) => v.fitness).slice(
+            0,
+            draft.n - draft.nuevos.length
+          ),
+        ];
+        // draft.data = sampleSize(all, draft.n);
         draft.selected = [];
         draft.nuevos = [];
       },
@@ -149,15 +179,15 @@ typeof window !== "undefined" &&
 
     init(50);
     while (true) {
-      await wait(500);
+      await wait(2500);
       seleccion();
-      await wait(500);
+      await wait(2500);
       cruzamiento();
-      await wait(500);
+      await wait(2500);
       mutacion();
-      await wait(500);
+      await wait(2500);
       reinsercion();
-      await wait(500);
+      await wait(2500);
     }
   })();
 

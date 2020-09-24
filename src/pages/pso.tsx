@@ -19,7 +19,6 @@ import {
   calcRastrigin,
   getRandomPercent,
   getRandomX,
-  limitX,
 } from "../utils/Rastrigin";
 
 const width = 700;
@@ -60,7 +59,7 @@ export const PSOStore = createStore(
         (state) => state.n,
         (state) => state.C1,
         (state) => state.C2,
-        (inertia, maxVelocity, n,C1,C2) => {
+        (inertia, maxVelocity, n, C1, C2) => {
           return {
             inertia,
             maxVelocity,
@@ -156,12 +155,15 @@ export const PSOStore = createStore(
 
           let vx1 = value.vx1;
           let vx2 = value.vx2;
-          vx1 = vx1 * inertia +
-          getRandomPercent() * C1 * (value.bestPersonalx1 - x1) +
-          getRandomPercent() * C2 * (draft.bestX1 - x1);
-          vx2 = vx2 * inertia +
-          getRandomPercent() * C1 * (value.bestPersonalx2 - x2) + 
-          getRandomPercent() * C2 * (draft.bestX2 - x2);  
+          vx1 =
+            vx1 * inertia +
+            getRandomPercent() * C1 * (value.bestPersonalx1 - x1) +
+            getRandomPercent() * C2 * (draft.bestX1 - x1);
+          vx2 =
+            vx2 * inertia +
+            getRandomPercent() * C1 * (value.bestPersonalx2 - x2) +
+            getRandomPercent() * C2 * (draft.bestX2 - x2);
+
           const mod = Math.sqrt(vx1 * vx1 + vx2 * vx2);
           if (mod > maxVelocity) {
             vx1 /= mod * maxVelocity;
@@ -170,15 +172,13 @@ export const PSOStore = createStore(
 
           x1 += vx1;
           x2 += vx2;
-          
-          if (x1 >= 5.12 || x1<=-5.12){
-            vx1 = -vx1
+
+          if (x1 >= 5.12 || x1 <= -5.12) {
+            vx1 = -vx1;
           }
-          if (x2 >= 5.12 || x2<=-5.12){
-            vx2 = -vx2
+          if (x2 >= 5.12 || x2 <= -5.12) {
+            vx2 = -vx2;
           }
-          //x1 = limitX(x1,vx1); // se agrego parametro vx1 (eje x de la visualizacion?)
-          //x2 = limitX(x2,vx2); // se agrego parametro vx2 (eje y de la visualizacion?)
 
           const fitness = calcRastrigin(x1, x2);
 
@@ -263,7 +263,7 @@ const Canvas = memo(() => {
 });
 
 const PSOPage = () => {
-  const { inertia, maxVelocity, n , C1, C2} = PSOStore.hooks.useMetadata();
+  const { inertia, maxVelocity, n, C1, C2 } = PSOStore.hooks.useMetadata();
 
   const bg = useColorModeValue(undefined, "white");
   const border = useColorModeValue("1px solid black", undefined);
@@ -279,8 +279,8 @@ const PSOPage = () => {
             width="200px"
             value={n}
             onChange={PSOStore.actions.init}
-            min={1}
-            max={100}
+            min={2}
+            max={500}
             step={1}
           >
             <SliderTrack>
