@@ -60,6 +60,11 @@ export const EAStore = createStore(
     bestFitnessHistory: [] as { generacion: number; elem: Elem }[],
   },
   {
+    hooks: {
+      useBestHistory: (store) => {
+        return store.bestFitnessHistory;
+      },
+    },
     actions: {
       init: (n?: number) => (draft) => {
         draft.step = EAStep.Inicio;
@@ -121,12 +126,11 @@ export const EAStore = createStore(
       mutacion: () => (draft) => {
         draft.step = EAStep.Mutacion;
         draft.nuevos = draft.nuevos.map((v) => {
-          if (random(1, 100) <= 5) {
-            if (random(0, 1) === 0) {
-              v.x1 = limitX(v.x1 + getRandomX());
-            } else {
-              v.x2 = limitX(v.x2 + getRandomX());
-            }
+          if (random(1, 100) <= 25) {
+            v.x1 = limitX(v.x1 + getRandomX());
+
+            v.x2 = limitX(v.x2 + getRandomX());
+
             v.fitness = calcRastrigin(v.x1, v.x2);
           }
           return v;
@@ -145,13 +149,6 @@ export const EAStore = createStore(
           };
           draft.bestFitnessHistory.push(draft.bestFitness);
         }
-        // draft.n = 20
-        // draft.nuevos.length = 6
-        // draft.data.length = 20;
-
-        // draft.n - draft.nuevos.length = 20 - 6 = 14
-
-        //             6            +    14  = 20
         draft.data = [
           ...draft.nuevos,
           ...sortBy(draft.data, (v) => v.fitness).slice(
@@ -159,13 +156,14 @@ export const EAStore = createStore(
             draft.n - draft.nuevos.length
           ),
         ];
-        // draft.data = sampleSize(all, draft.n);
         draft.selected = [];
         draft.nuevos = [];
       },
     },
   }
 );
+
+const waitStep = 200;
 
 typeof window !== "undefined" &&
   (async () => {
@@ -179,15 +177,15 @@ typeof window !== "undefined" &&
 
     init(50);
     while (true) {
-      await wait(2500);
+      await wait(waitStep);
       seleccion();
-      await wait(2500);
+      await wait(waitStep);
       cruzamiento();
-      await wait(2500);
+      await wait(waitStep);
       mutacion();
-      await wait(2500);
+      await wait(waitStep);
       reinsercion();
-      await wait(2500);
+      await wait(waitStep);
     }
   })();
 
