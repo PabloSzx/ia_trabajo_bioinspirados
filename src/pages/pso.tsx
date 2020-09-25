@@ -1,6 +1,13 @@
-import { minBy, range } from "lodash";
+import { debounce, minBy, range } from "lodash";
 import { Fragment, memo } from "react";
-import { Circle, Layer, Line, Stage, Text as KonvaText } from "react-konva";
+import {
+  Circle,
+  Layer,
+  Line,
+  Rect,
+  Stage,
+  Text as KonvaText,
+} from "react-konva";
 import { createSelector, createStore } from "react-state-selector";
 
 import {
@@ -15,16 +22,21 @@ import {
   useColorModeValue,
 } from "@chakra-ui/core";
 
-import {
-  calcRastrigin,
-  getRandomPercent,
-  getRandomX,
-} from "../utils/Rastrigin";
+import { IS_BROWSER } from "../utils/constants";
+import { getRandomGenerator } from "../utils/random";
+import { calcRastrigin } from "../utils/Rastrigin";
+import { getLocalStorage } from "../utils/storage";
 
 const width = 700;
 const height = 700;
+
+export const psoMeta = {
+  enableTick: false,
+};
+
 export const PSOStore = createStore(
   {
+    random: getRandomGenerator(getLocalStorage("psoRandomSeed", "base")),
     n: 100,
     inertia: 2000,
     maxVelocity: 3,
@@ -75,6 +87,9 @@ export const PSOStore = createStore(
       useBestHistory(store) {
         return store.bestHistory;
       },
+      useRandom(store) {
+        return store.random;
+      },
     },
     actions: {
       setInertia: (n: number) => (draft) => {
@@ -101,7 +116,13 @@ export const PSOStore = createStore(
           PSOStore.actions.init();
         }, 0);
       },
-      init: (n?: number) => (draft) => {
+      init: ({ n, seed }: { n?: number; seed?: string } = {}) => (draft) => {
+        psoMeta.enableTick = true;
+
+        seed = draft.random.seed = seed ?? draft.random.seed;
+
+        const { getRandomX } = (draft.random = getRandomGenerator(seed));
+
         n = draft.n = n ?? draft.n;
         draft.data = range(0, n).map(() => {
           const x1 = getRandomX();
@@ -148,6 +169,8 @@ export const PSOStore = createStore(
         draft.nEvals += 1;
 
         let fitnessImproved = false;
+
+        const { getRandomPercent } = draft.random;
 
         for (const value of draft.data) {
           let x1 = value.x1;
@@ -215,11 +238,13 @@ export const PSOStore = createStore(
   }
 );
 
-PSOStore.actions.init(100);
+PSOStore.actions.init();
 
-if (typeof window !== "undefined")
+if (IS_BROWSER)
   setInterval(() => {
-    PSOStore.actions.tick();
+    if (psoMeta.enableTick) {
+      PSOStore.actions.tick();
+    }
   }, 20);
 
 function getRelativePosToCanvas(v: number) {
@@ -231,6 +256,20 @@ const Canvas = memo(() => {
   return (
     <Stage width={width} height={height}>
       <Layer>
+        <Rect
+          x={getRelativePosToCanvas(0) - 10}
+          y={getRelativePosToCanvas(0) - 10}
+          width={20}
+          height={20}
+          fill="green"
+        />
+        <Circle
+          x={getRelativePosToCanvas(0)}
+          y={getRelativePosToCanvas(0)}
+          fill="blue"
+          radius={6}
+        />
+
         <Circle
           x={getRelativePosToCanvas(bestX1)}
           y={getRelativePosToCanvas(bestX2)}
@@ -270,17 +309,25 @@ const PSOPage = () => {
   return (
     <Stack>
       <Flex paddingTop="10px" direction="column" alignItems="center">
-        <Box shadow="md" borderWidth="1px" padding="10px" borderRadius="5px">
+        <Box
+          shadow="md"
+          borderWidth="1px"
+          paddingY="10px"
+          paddingX="20px"
+          borderRadius="5px"
+        >
           <Text textAlign="center">
             N: <b>{n}</b>
           </Text>
           <Slider
             colorScheme="orange"
-            width="200px"
+            width="90vw"
             value={n}
-            onChange={PSOStore.actions.init}
+            onChange={(n) => {
+              PSOStore.actions.init({ n });
+            }}
             min={2}
-            max={500}
+            max={200}
             step={1}
           >
             <SliderTrack>
@@ -291,13 +338,19 @@ const PSOPage = () => {
         </Box>
       </Flex>
       <Flex paddingTop="10px" direction="column" alignItems="center">
-        <Box shadow="md" borderWidth="1px" padding="10px" borderRadius="5px">
+        <Box
+          shadow="md"
+          borderWidth="1px"
+          paddingY="10px"
+          paddingX="20px"
+          borderRadius="5px"
+        >
           <Text textAlign="center">
             Inercia: <b>{inertia}</b>
           </Text>
           <Slider
             colorScheme="green"
-            width="200px"
+            width="90vw"
             value={inertia}
             onChange={PSOStore.actions.setInertia}
             min={0}
@@ -313,13 +366,19 @@ const PSOPage = () => {
       </Flex>
 
       <Flex paddingTop="10px" direction="column" alignItems="center">
-        <Box shadow="md" borderWidth="1px" padding="10px" borderRadius="5px">
+        <Box
+          shadow="md"
+          borderWidth="1px"
+          paddingY="10px"
+          paddingX="20px"
+          borderRadius="5px"
+        >
           <Text textAlign="center">
             Velocidad Máxima: <b>{maxVelocity}</b>
           </Text>
           <Slider
             colorScheme="cyan"
-            width="200px"
+            width="90vw"
             value={maxVelocity}
             onChange={PSOStore.actions.setMaxVelocity}
             min={0}
@@ -334,13 +393,19 @@ const PSOPage = () => {
         </Box>
       </Flex>
       <Flex paddingTop="10px" direction="column" alignItems="center">
-        <Box shadow="md" borderWidth="1px" padding="10px" borderRadius="5px">
+        <Box
+          shadow="md"
+          borderWidth="1px"
+          paddingY="10px"
+          paddingX="20px"
+          borderRadius="5px"
+        >
           <Text textAlign="center">
             C1(Individual): <b>{C1}</b>
           </Text>
           <Slider
             colorScheme="cyan"
-            width="200px"
+            width="90vw"
             value={C1}
             onChange={PSOStore.actions.setC1}
             min={10}
@@ -355,13 +420,19 @@ const PSOPage = () => {
         </Box>
       </Flex>
       <Flex paddingTop="10px" direction="column" alignItems="center">
-        <Box shadow="md" borderWidth="1px" padding="10px" borderRadius="5px">
+        <Box
+          shadow="md"
+          borderWidth="1px"
+          paddingY="10px"
+          paddingX="20px"
+          borderRadius="5px"
+        >
           <Text textAlign="center">
             C2(Social): <b>{C2}</b>
           </Text>
           <Slider
             colorScheme="cyan"
-            width="200px"
+            width="90vw"
             value={C2}
             onChange={PSOStore.actions.setC2}
             min={10}

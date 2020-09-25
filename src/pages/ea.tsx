@@ -1,15 +1,6 @@
-import {
-  chunk,
-  compact,
-  minBy,
-  random,
-  range,
-  sampleSize,
-  shuffle,
-  sortBy,
-} from "lodash";
+import { chunk, compact, minBy, range, sortBy } from "lodash";
 import { Fragment } from "react";
-import { Circle, Layer, Stage, Text as KonvaText } from "react-konva";
+import { Circle, Layer, Rect, Stage, Text as KonvaText } from "react-konva";
 import { createStore } from "react-state-selector";
 import wait from "waait";
 
@@ -24,7 +15,10 @@ import {
   useColorModeValue,
 } from "@chakra-ui/core";
 
-import { calcRastrigin, getRandomX, limitX } from "../utils/Rastrigin";
+import { IS_BROWSER } from "../utils/constants";
+import { getRandomGenerator } from "../utils/random";
+import { calcRastrigin, limitX } from "../utils/Rastrigin";
+import { getLocalStorage } from "../utils/storage";
 
 const width = 700;
 const height = 700;
@@ -44,11 +38,17 @@ enum EAStep {
   Reinsercion = "Reinserción",
 }
 
+export const eaMeta = {
+  enableTick: false,
+  waitStep: 500,
+};
+
 export const EAStore = createStore(
   {
+    random: getRandomGenerator(getLocalStorage("eaRandomSeed", "base")),
     step: EAStep.Inicio,
     idCounter: 0,
-    n: 12,
+    n: 40,
     generacion: 0,
     data: [] as Elem[],
     selected: [] as Elem[],
@@ -61,14 +61,23 @@ export const EAStore = createStore(
   },
   {
     hooks: {
-      useBestHistory: (store) => {
+      useBestHistory(store) {
         return store.bestFitnessHistory;
+      },
+      useRandom(store) {
+        return store.random;
       },
     },
     actions: {
-      init: (n?: number) => (draft) => {
+      init: ({ n, seed }: { n?: number; seed?: string } = {}) => (draft) => {
+        eaMeta.enableTick = true;
         draft.step = EAStep.Inicio;
         n = draft.n = n ?? draft.n;
+
+        seed = draft.random.seed = seed ?? draft.random.seed;
+
+        const { getRandomX } = (draft.random = getRandomGenerator(seed));
+
         let idCounter = 0;
         draft.data = range(0, n).map(() => {
           const x1 = getRandomX();
@@ -99,6 +108,8 @@ export const EAStore = createStore(
       seleccion: () => (draft) => {
         draft.step = EAStep.Seleccion;
 
+        const { sampleSize } = draft.random;
+
         draft.selected = compact(
           range(0, draft.n / 2).map(() => {
             const sampleData = sampleSize(draft.data, 3);
@@ -108,6 +119,7 @@ export const EAStore = createStore(
         );
       },
       cruzamiento: () => (draft) => {
+        const { random } = draft.random;
         draft.step = EAStep.Cruzamiento;
         draft.nuevos = compact(
           chunk(draft.selected, 2).map(([v1, v2]) => {
@@ -124,6 +136,7 @@ export const EAStore = createStore(
         );
       },
       mutacion: () => (draft) => {
+        const { getRandomX, random } = draft.random;
         draft.step = EAStep.Mutacion;
         draft.nuevos = draft.nuevos.map((v) => {
           if (random(1, 100) <= 25) {
@@ -163,9 +176,7 @@ export const EAStore = createStore(
   }
 );
 
-const waitStep = 200;
-
-typeof window !== "undefined" &&
+if (IS_BROWSER)
   (async () => {
     const {
       init,
@@ -175,17 +186,29 @@ typeof window !== "undefined" &&
       reinsercion,
     } = EAStore.actions;
 
-    init(50);
+    init();
     while (true) {
-      await wait(waitStep);
-      seleccion();
-      await wait(waitStep);
-      cruzamiento();
-      await wait(waitStep);
-      mutacion();
-      await wait(waitStep);
-      reinsercion();
-      await wait(waitStep);
+      if (eaMeta.enableTick) {
+        await wait(eaMeta.waitStep);
+        seleccion();
+      }
+
+      if (eaMeta.enableTick) {
+        await wait(eaMeta.waitStep);
+        cruzamiento();
+      }
+
+      if (eaMeta.enableTick) {
+        await wait(eaMeta.waitStep);
+        mutacion();
+      }
+
+      if (eaMeta.enableTick) {
+        await wait(eaMeta.waitStep);
+        reinsercion();
+      }
+
+      await wait(eaMeta.waitStep);
     }
   })();
 
@@ -230,6 +253,19 @@ const EAPage = () => {
         <Box bg={bg} border={border}>
           <Stage width={width} height={height}>
             <Layer>
+              <Rect
+                x={getRelativePosToCanvas(0) - 10}
+                y={getRelativePosToCanvas(0) - 10}
+                width={20}
+                height={20}
+                fill="green"
+              />
+              <Circle
+                x={getRelativePosToCanvas(0)}
+                y={getRelativePosToCanvas(0)}
+                fill="blue"
+                radius={6}
+              />
               <Circle
                 x={getRelativePosToCanvas(bestFitness.elem.x1)}
                 y={getRelativePosToCanvas(bestFitness.elem.x2)}

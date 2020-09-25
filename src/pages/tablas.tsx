@@ -1,4 +1,4 @@
-import { Box, Divider, Heading, Stack, Text } from "@chakra-ui/core";
+import { Box, Divider, Heading, Stack } from "@chakra-ui/core";
 
 import {
   Table,

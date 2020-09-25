@@ -18,8 +18,8 @@ import {
   useColorModeValue,
 } from "@chakra-ui/core";
 
-import { PSOStore } from "./pso";
 import { EAStore } from "./ea";
+import { PSOStore } from "./pso";
 
 const GraficosPage = () => {
   const dataPSO = PSOStore.hooks.useBestHistory();
