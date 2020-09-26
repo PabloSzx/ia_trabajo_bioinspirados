@@ -1,5 +1,6 @@
-import { debounce, minBy, range } from "lodash";
+import { minBy, range } from "lodash";
 import { Fragment, memo } from "react";
+import { AiOutlinePauseCircle, AiOutlinePlayCircle } from "react-icons/ai";
 import {
   Circle,
   Layer,
@@ -9,20 +10,18 @@ import {
   Text as KonvaText,
 } from "react-konva";
 import { createSelector, createStore } from "react-state-selector";
+import { useInterval } from "react-use";
 
 import {
   Box,
+  Button,
   Flex,
-  Slider,
-  SliderFilledTrack,
-  SliderThumb,
-  SliderTrack,
   Stack,
   Text,
   useColorModeValue,
 } from "@chakra-ui/core";
 
-import { IS_BROWSER } from "../utils/constants";
+import { SliderBox } from "../components/SliderBox";
 import { getRandomGenerator } from "../utils/random";
 import { calcRastrigin } from "../utils/Rastrigin";
 import { getLocalStorage } from "../utils/storage";
@@ -30,9 +29,38 @@ import { getLocalStorage } from "../utils/storage";
 const width = 700;
 const height = 700;
 
-export const psoMeta = {
-  enableTick: false,
-};
+const {
+  hooks: { useIsTickEnabled },
+  actions: { toggleEnabledTick },
+} = createStore(
+  {
+    isTickEnabled: false,
+  },
+  {
+    hooks: {
+      useIsTickEnabled(store) {
+        return store.isTickEnabled;
+      },
+    },
+    actions: {
+      toggleEnabledTick: () => (draft) => {
+        draft.isTickEnabled = !draft.isTickEnabled;
+      },
+      enableTick: () => (draft) => {
+        draft.isTickEnabled = true;
+      },
+      disableTick: () => (draft) => {
+        draft.isTickEnabled = false;
+      },
+    },
+    storagePersistence: {
+      isActive: true,
+      isSSR: true,
+      debounceWait: 500,
+      persistenceKey: "PSOMetaStore",
+    },
+  }
+);
 
 export const PSOStore = createStore(
   {
@@ -50,7 +78,7 @@ export const PSOStore = createStore(
       vx2: number;
       bestPersonalx1: number;
       bestPersonalx2: number;
-      bestPersonalY: number;
+      bestPersonalFitness: number;
     }[],
     bestX1: 0,
     bestX2: 0,
@@ -60,7 +88,7 @@ export const PSOStore = createStore(
       nEvals: number;
       bestX1: number;
       bestX2: number;
-      bestY: number;
+      bestFitness: number;
     }[],
   },
   {
@@ -81,9 +109,6 @@ export const PSOStore = createStore(
           };
         }
       ),
-      useData(store) {
-        return store.data;
-      },
       useBestHistory(store) {
         return store.bestHistory;
       },
@@ -117,8 +142,6 @@ export const PSOStore = createStore(
         }, 0);
       },
       init: ({ n, seed }: { n?: number; seed?: string } = {}) => (draft) => {
-        psoMeta.enableTick = true;
-
         seed = draft.random.seed = seed ?? draft.random.seed;
 
         const { getRandomX } = (draft.random = getRandomGenerator(seed));
@@ -141,22 +164,22 @@ export const PSOStore = createStore(
             vx2: 0,
             bestPersonalx1,
             bestPersonalx2,
-            bestPersonalY: calcRastrigin(bestPersonalx1, bestPersonalx2),
+            bestPersonalFitness: calcRastrigin(bestPersonalx1, bestPersonalx2),
           };
         });
 
-        const bestSingle = minBy(draft.data, (v) => v.bestPersonalY);
+        const bestSingle = minBy(draft.data, (v) => v.bestPersonalFitness);
 
         draft.bestX1 = bestSingle?.bestPersonalx1 ?? getRandomX();
         draft.bestX2 = bestSingle?.bestPersonalx2 ?? getRandomX();
-        draft.bestY = bestSingle?.bestPersonalY ?? Infinity;
+        draft.bestY = bestSingle?.bestPersonalFitness ?? Infinity;
 
         draft.bestHistory = [
           {
             nEvals: 1,
             bestX1: draft.bestX1,
             bestX2: draft.bestX2,
-            bestY: draft.bestY,
+            bestFitness: draft.bestY,
           },
         ];
         draft.nEvals = 1;
@@ -205,8 +228,8 @@ export const PSOStore = createStore(
 
           const fitness = calcRastrigin(x1, x2);
 
-          if (fitness < value.bestPersonalY) {
-            value.bestPersonalY = fitness;
+          if (fitness < value.bestPersonalFitness) {
+            value.bestPersonalFitness = fitness;
             value.bestPersonalx1 = x1;
             value.bestPersonalx2 = x2;
           }
@@ -227,7 +250,7 @@ export const PSOStore = createStore(
 
         if (fitnessImproved) {
           draft.bestHistory.push({
-            bestY: draft.bestY,
+            bestFitness: draft.bestY,
             bestX1: draft.bestX1,
             bestX2: draft.bestX2,
             nEvals: draft.nEvals,
@@ -238,220 +261,161 @@ export const PSOStore = createStore(
   }
 );
 
-PSOStore.actions.init();
+const {
+  init,
+  tick,
+  setInertia,
+  setMaxVelocity,
+  setC1,
+  setC2,
+} = PSOStore.actions;
 
-if (IS_BROWSER)
-  setInterval(() => {
-    if (psoMeta.enableTick) {
-      PSOStore.actions.tick();
-    }
-  }, 20);
-
+init();
 function getRelativePosToCanvas(v: number) {
   return v * 67 + 350;
 }
 
 const Canvas = memo(() => {
-  const { data, bestX1, bestX2, bestY } = PSOStore.useStore();
+  const bg = useColorModeValue(undefined, "white");
+  const border = useColorModeValue("1px solid black", undefined);
+
+  const { data, bestX1, bestX2, bestY, nEvals } = PSOStore.useStore();
   return (
-    <Stage width={width} height={height}>
-      <Layer>
-        <Rect
-          x={getRelativePosToCanvas(0) - 10}
-          y={getRelativePosToCanvas(0) - 10}
-          width={20}
-          height={20}
-          fill="green"
-        />
-        <Circle
-          x={getRelativePosToCanvas(0)}
-          y={getRelativePosToCanvas(0)}
-          fill="blue"
-          radius={6}
-        />
-
-        <Circle
-          x={getRelativePosToCanvas(bestX1)}
-          y={getRelativePosToCanvas(bestX2)}
-          fill="red"
-          radius={6}
-        />
-        <KonvaText
-          x={getRelativePosToCanvas(bestX1) + 10}
-          y={getRelativePosToCanvas(bestX2)}
-          fill="red"
-          text={bestY.toFixed(5)}
-        />
-        {data.map((v, index) => {
-          const x1 = getRelativePosToCanvas(v.x1);
-          const x2 = getRelativePosToCanvas(v.x2);
-
-          return (
-            <Fragment key={index}>
-              <Circle x={x1} y={x2} fill="green" radius={4} />
-              <Line
-                points={[x1, x2, x1 - 50 * v.vx1, x2 - 50 * v.vx2]}
-                stroke="green"
+    <>
+      <Flex justifyContent="center">
+        <Text>
+          N° Evaluaciones: <b>{nEvals}</b>
+        </Text>
+      </Flex>
+      <Flex justifyContent="center" paddingY="10px">
+        <Box bg={bg} border={border}>
+          <Stage width={width} height={height}>
+            <Layer>
+              <Rect
+                x={getRelativePosToCanvas(0) - 10}
+                y={getRelativePosToCanvas(0) - 10}
+                width={20}
+                height={20}
+                fill="green"
               />
-            </Fragment>
-          );
-        })}
-      </Layer>
-    </Stage>
+              <Circle
+                x={getRelativePosToCanvas(0)}
+                y={getRelativePosToCanvas(0)}
+                fill="blue"
+                radius={6}
+              />
+
+              <Circle
+                x={getRelativePosToCanvas(bestX1)}
+                y={getRelativePosToCanvas(bestX2)}
+                fill="red"
+                radius={6}
+              />
+              <KonvaText
+                x={getRelativePosToCanvas(bestX1) + 10}
+                y={getRelativePosToCanvas(bestX2)}
+                fill="red"
+                text={bestY.toFixed(5)}
+              />
+              {data.map((v, index) => {
+                const x1 = getRelativePosToCanvas(v.x1);
+                const x2 = getRelativePosToCanvas(v.x2);
+
+                return (
+                  <Fragment key={index}>
+                    <Circle x={x1} y={x2} fill="green" radius={4} />
+                    <Line
+                      points={[x1, x2, x1 - 50 * v.vx1, x2 - 50 * v.vx2]}
+                      stroke="green"
+                    />
+                  </Fragment>
+                );
+              })}
+            </Layer>
+          </Stage>
+        </Box>
+      </Flex>
+    </>
   );
 });
 
 const PSOPage = () => {
   const { inertia, maxVelocity, n, C1, C2 } = PSOStore.hooks.useMetadata();
 
-  const bg = useColorModeValue(undefined, "white");
-  const border = useColorModeValue("1px solid black", undefined);
+  const isTickEnabled = useIsTickEnabled();
+
+  useInterval(() => {
+    if (isTickEnabled) {
+      tick();
+    }
+  }, 20);
+
   return (
     <Stack>
-      <Flex paddingTop="10px" direction="column" alignItems="center">
-        <Box
-          shadow="md"
-          borderWidth="1px"
-          paddingY="10px"
-          paddingX="20px"
-          borderRadius="5px"
+      <SliderBox
+        label="N"
+        value={n}
+        setValue={(n) => {
+          init({ n });
+        }}
+        min={2}
+        max={200}
+        step={1}
+        colorScheme="orange"
+      />
+
+      <SliderBox
+        label="Inercia"
+        value={inertia}
+        setValue={setInertia}
+        min={0}
+        max={5000}
+        step={1}
+        colorScheme="green"
+      />
+
+      <SliderBox
+        label="Velocidad máxima"
+        value={maxVelocity}
+        setValue={setMaxVelocity}
+        min={0}
+        max={7}
+        step={0.25}
+      />
+
+      <SliderBox
+        label="C1(Individual)"
+        value={C1}
+        setValue={setC1}
+        min={10}
+        max={100}
+        step={1}
+      />
+
+      <SliderBox
+        label="C2(Social)"
+        value={C2}
+        setValue={setC2}
+        min={10}
+        max={100}
+        step={1}
+      />
+
+      <Flex justifyContent="center">
+        <Button
+          size="lg"
+          colorScheme={isTickEnabled ? "red" : "blue"}
+          aria-label={isTickEnabled ? "Resume Ticking" : "Pause Ticking"}
+          leftIcon={
+            isTickEnabled ? <AiOutlinePauseCircle /> : <AiOutlinePlayCircle />
+          }
+          onClick={toggleEnabledTick}
         >
-          <Text textAlign="center">
-            N: <b>{n}</b>
-          </Text>
-          <Slider
-            colorScheme="orange"
-            width="90vw"
-            value={n}
-            onChange={(n) => {
-              PSOStore.actions.init({ n });
-            }}
-            min={2}
-            max={200}
-            step={1}
-          >
-            <SliderTrack>
-              <SliderFilledTrack />
-            </SliderTrack>
-            <SliderThumb />
-          </Slider>
-        </Box>
-      </Flex>
-      <Flex paddingTop="10px" direction="column" alignItems="center">
-        <Box
-          shadow="md"
-          borderWidth="1px"
-          paddingY="10px"
-          paddingX="20px"
-          borderRadius="5px"
-        >
-          <Text textAlign="center">
-            Inercia: <b>{inertia}</b>
-          </Text>
-          <Slider
-            colorScheme="green"
-            width="90vw"
-            value={inertia}
-            onChange={PSOStore.actions.setInertia}
-            min={0}
-            max={5000}
-            step={1}
-          >
-            <SliderTrack>
-              <SliderFilledTrack />
-            </SliderTrack>
-            <SliderThumb />
-          </Slider>
-        </Box>
+          {isTickEnabled ? "Pausar" : "Reanudar"}
+        </Button>
       </Flex>
 
-      <Flex paddingTop="10px" direction="column" alignItems="center">
-        <Box
-          shadow="md"
-          borderWidth="1px"
-          paddingY="10px"
-          paddingX="20px"
-          borderRadius="5px"
-        >
-          <Text textAlign="center">
-            Velocidad Máxima: <b>{maxVelocity}</b>
-          </Text>
-          <Slider
-            colorScheme="cyan"
-            width="90vw"
-            value={maxVelocity}
-            onChange={PSOStore.actions.setMaxVelocity}
-            min={0}
-            max={7}
-            step={0.25}
-          >
-            <SliderTrack>
-              <SliderFilledTrack />
-            </SliderTrack>
-            <SliderThumb />
-          </Slider>
-        </Box>
-      </Flex>
-      <Flex paddingTop="10px" direction="column" alignItems="center">
-        <Box
-          shadow="md"
-          borderWidth="1px"
-          paddingY="10px"
-          paddingX="20px"
-          borderRadius="5px"
-        >
-          <Text textAlign="center">
-            C1(Individual): <b>{C1}</b>
-          </Text>
-          <Slider
-            colorScheme="cyan"
-            width="90vw"
-            value={C1}
-            onChange={PSOStore.actions.setC1}
-            min={10}
-            max={100}
-            step={1}
-          >
-            <SliderTrack>
-              <SliderFilledTrack />
-            </SliderTrack>
-            <SliderThumb />
-          </Slider>
-        </Box>
-      </Flex>
-      <Flex paddingTop="10px" direction="column" alignItems="center">
-        <Box
-          shadow="md"
-          borderWidth="1px"
-          paddingY="10px"
-          paddingX="20px"
-          borderRadius="5px"
-        >
-          <Text textAlign="center">
-            C2(Social): <b>{C2}</b>
-          </Text>
-          <Slider
-            colorScheme="cyan"
-            width="90vw"
-            value={C2}
-            onChange={PSOStore.actions.setC2}
-            min={10}
-            max={100}
-            step={1}
-          >
-            <SliderTrack>
-              <SliderFilledTrack />
-            </SliderTrack>
-            <SliderThumb />
-          </Slider>
-        </Box>
-      </Flex>
-
-      <Flex justifyContent="center" paddingTop="10px">
-        <Box bg={bg} border={border}>
-          <Canvas />
-        </Box>
-      </Flex>
+      <Canvas />
     </Stack>
   );
 };

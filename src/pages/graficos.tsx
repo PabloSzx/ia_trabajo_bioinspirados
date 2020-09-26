@@ -36,14 +36,14 @@ const GraficosPage = () => {
           <LineChart data={dataPSO}>
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis
-              dataKey={(d) => d.nEvals}
+              dataKey={(d: typeof dataPSO[number]) => d.nEvals}
               name="Numero de evaluaciones"
               axisLine
               type="category"
               unit=" evaluaciones"
             />
             <YAxis
-              dataKey={(d) => round(d.bestY, 2)}
+              dataKey={(d: typeof dataPSO[number]) => round(d.bestFitness, 2)}
               allowDecimals
               domain={[0, "dataMax"]}
             />
@@ -51,7 +51,7 @@ const GraficosPage = () => {
             <Legend />
             <Line
               type="monotone"
-              dataKey={(d) => d.bestY}
+              dataKey={(d: typeof dataPSO[number]) => d.bestFitness}
               activeDot={{ r: 8 }}
               stroke="#666"
               name="Fitness"
@@ -68,14 +68,14 @@ const GraficosPage = () => {
           <LineChart data={dataEA}>
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis
-              dataKey={(d) => d.generacion}
+              dataKey={(d: typeof dataEA[number]) => d.generacion}
               name="Generación"
               axisLine
               type="category"
               unit=" generaciones"
             />
             <YAxis
-              dataKey={(d) => round(d.elem.fitness, 2)}
+              dataKey={(d: typeof dataEA[number]) => round(d.elem.fitness, 2)}
               allowDecimals
               domain={[0, "dataMax"]}
             />
@@ -83,7 +83,7 @@ const GraficosPage = () => {
             <Legend />
             <Line
               type="monotone"
-              dataKey={(d) => d.elem.fitness}
+              dataKey={(d: typeof dataEA[number]) => d.elem.fitness}
               activeDot={{ r: 8 }}
               stroke="#666"
               name="Fitness"

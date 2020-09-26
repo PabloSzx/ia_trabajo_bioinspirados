@@ -36,16 +36,18 @@ const TablasPage = () => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {dataPSO.map(({ bestX1, bestX2, bestY, nEvals }, key) => {
-              return (
-                <TableRow key={key}>
-                  <TableCell>{bestX1}</TableCell>
-                  <TableCell>{bestX2}</TableCell>
-                  <TableCell>{bestY}</TableCell>
-                  <TableCell>{nEvals}</TableCell>
-                </TableRow>
-              );
-            })}
+            {dataPSO.map(
+              ({ bestX1, bestX2, bestFitness: bestY, nEvals }, key) => {
+                return (
+                  <TableRow key={key}>
+                    <TableCell>{bestX1}</TableCell>
+                    <TableCell>{bestX2}</TableCell>
+                    <TableCell>{bestY}</TableCell>
+                    <TableCell>{nEvals}</TableCell>
+                  </TableRow>
+                );
+              }
+            )}
           </TableBody>
         </Table>
       </Box>

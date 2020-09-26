@@ -3,8 +3,8 @@ import { useDebounce } from "react-use";
 import { Box, FormLabel, Input, Stack } from "@chakra-ui/core";
 
 import { ToggleTheme } from "../components/ToggleTheme";
-import { eaMeta, EAStore } from "./ea";
-import { psoMeta, PSOStore } from "./pso";
+import { EAStore } from "./ea";
+import { PSOStore } from "./pso";
 
 const IndexPage = () => {
   const psoSeed = PSOStore.hooks.useRandom().seed;
@@ -34,7 +34,6 @@ const IndexPage = () => {
         <Input
           value={psoSeed}
           onChange={({ target: { value: seed } }) => {
-            psoMeta.enableTick = false;
             PSOStore.actions.init({
               seed,
             });
@@ -53,7 +52,6 @@ const IndexPage = () => {
         <Input
           value={eaSeed}
           onChange={({ target: { value: seed } }) => {
-            eaMeta.enableTick = false;
             EAStore.actions.init({
               seed,
             });
