@@ -67,8 +67,8 @@ export const PSOStore = createStore(
     random: getRandomGenerator(getLocalStorage("psoRandomSeed", "base")),
     n: 100,
     inertia: 2000,
-    maxVelocity: 3,
-    C1: 30,
+    maxVelocity: 0.2,
+    C1: 70,
     C2: 10,
     data: [] as {
       x1: number;
@@ -211,9 +211,10 @@ export const PSOStore = createStore(
             getRandomPercent() * C2 * (draft.bestX2 - x2);
 
           const mod = Math.sqrt(vx1 * vx1 + vx2 * vx2);
-          if (mod > maxVelocity) {
-            vx1 /= mod * maxVelocity;
-            vx2 /= mod * maxVelocity;
+      
+          if (mod > maxVelocity){
+            vx1 = (vx1 / mod) * maxVelocity ;
+            vx2 = (vx2 / mod) * maxVelocity ;
           }
 
           x1 += vx1;
@@ -379,8 +380,8 @@ const PSOPage = () => {
         value={maxVelocity}
         setValue={setMaxVelocity}
         min={0}
-        max={7}
-        step={0.25}
+        max={1}
+        step={0.1}
       />
 
       <SliderBox
