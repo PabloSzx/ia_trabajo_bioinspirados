@@ -296,26 +296,26 @@ const EAPage = () => {
   const waitStep = useWaitStep();
   const isTickEnabled = useIsTickEnabled();
 
-  useInterval(() => {
-    if (!isTickEnabled) {
-      return;
-    }
-    switch (step) {
-      case EAStep.Reinsercion:
-      case EAStep.Inicio: {
-        return seleccion();
+  useInterval(
+    () => {
+      switch (step) {
+        case EAStep.Reinsercion:
+        case EAStep.Inicio: {
+          return seleccion();
+        }
+        case EAStep.Seleccion: {
+          return cruzamiento();
+        }
+        case EAStep.Cruzamiento: {
+          return mutacion();
+        }
+        case EAStep.Mutacion: {
+          return reinsercion();
+        }
       }
-      case EAStep.Seleccion: {
-        return cruzamiento();
-      }
-      case EAStep.Cruzamiento: {
-        return mutacion();
-      }
-      case EAStep.Mutacion: {
-        return reinsercion();
-      }
-    }
-  }, waitStep);
+    },
+    isTickEnabled ? waitStep : null
+  );
 
   return (
     <Stack>
