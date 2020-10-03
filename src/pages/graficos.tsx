@@ -1,6 +1,7 @@
 import { compact, defaults, sortBy } from "lodash";
 import { useMemo } from "react";
 import {
+  Brush,
   CartesianGrid,
   Legend,
   Line,
@@ -68,7 +69,7 @@ const GraficosPage = () => {
     <Stack alignItems="center">
       <Heading>Convergencia PSO vs EA</Heading>
       <Flex width="100%" justifyContent="center">
-        <ResponsiveContainer height={300} width="80%">
+        <ResponsiveContainer height={600} width="80%">
           <LineChart data={combinedData}>
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis
@@ -95,6 +96,7 @@ const GraficosPage = () => {
               dataKey="pso"
               stroke="#82ca9d"
             />
+            <Brush dataKey={(d: typeof combinedData[number]) => d.x} />
           </LineChart>
         </ResponsiveContainer>
       </Flex>
