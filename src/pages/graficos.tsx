@@ -1,4 +1,5 @@
-import { round } from "lodash";
+import { compact, defaults, sortBy } from "lodash";
+import { useMemo } from "react";
 import {
   CartesianGrid,
   Legend,
@@ -10,13 +11,7 @@ import {
   YAxis,
 } from "recharts";
 
-import {
-  Divider,
-  Flex,
-  Heading,
-  Stack,
-  useColorModeValue,
-} from "@chakra-ui/core";
+import { Flex, Heading, Stack, useColorModeValue } from "@chakra-ui/core";
 
 import { EAStore } from "./ea";
 import { PSOStore } from "./pso";
@@ -28,65 +23,77 @@ const GraficosPage = () => {
 
   const tooltipLabelColor = useColorModeValue(undefined, "black");
 
+  const combinedData = useMemo(() => {
+    const data: { type: "EA" | "PSO"; x: number; y: number }[] = [];
+
+    for (const v of dataPSO) {
+      data.push({
+        type: "PSO",
+        x: v.nEvals,
+        y: v.bestFitness,
+      });
+    }
+
+    for (const v of dataEA) {
+      data.push({
+        type: "EA",
+        x: v.generacion,
+        y: v.elem.fitness,
+      });
+    }
+
+    const reducedData = data.reduce((acum, value) => {
+      defaults(acum, {
+        [value.x]: {
+          x: value.x,
+        },
+      });
+      switch (value.type) {
+        case "EA": {
+          acum[value.x].ea = value.y;
+          break;
+        }
+        case "PSO": {
+          acum[value.x].pso = value.y;
+          break;
+        }
+      }
+      return acum;
+    }, [] as { x: number; ea?: number; pso?: number }[]);
+
+    return sortBy(compact(reducedData), (v) => v.x);
+  }, [dataPSO, dataEA]);
+
   return (
     <Stack alignItems="center">
-      <Heading>Convergencia PSO</Heading>
+      <Heading>Convergencia PSO vs EA</Heading>
       <Flex width="100%" justifyContent="center">
         <ResponsiveContainer height={300} width="80%">
-          <LineChart data={dataPSO}>
+          <LineChart data={combinedData}>
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis
-              dataKey={(d: typeof dataPSO[number]) => d.nEvals}
-              name="Numero de evaluaciones"
               axisLine
-              type="category"
-              unit=" evaluaciones"
-            />
-            <YAxis
-              dataKey={(d: typeof dataPSO[number]) => round(d.bestFitness, 2)}
-              allowDecimals
+              type="number"
               domain={[0, "dataMax"]}
+              dataKey={(d: typeof combinedData[number]) => d.x}
             />
+
+            <YAxis axisLine />
             <Tooltip labelStyle={{ color: tooltipLabelColor }} />
             <Legend />
             <Line
-              type="monotone"
-              dataKey={(d: typeof dataPSO[number]) => d.bestFitness}
-              activeDot={{ r: 8 }}
-              stroke="#666"
-              name="Fitness"
+              type="stepAfter"
+              connectNulls
+              name="EA"
+              dataKey="ea"
+              stroke="#8884d8"
             />
-          </LineChart>
-        </ResponsiveContainer>
-      </Flex>
-
-      <Divider />
-
-      <Heading>Convergencia EA</Heading>
-      <Flex width="100%" justifyContent="center">
-        <ResponsiveContainer height={300} width="80%">
-          <LineChart data={dataEA}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis
-              dataKey={(d: typeof dataEA[number]) => d.generacion}
-              name="Generación"
-              axisLine
-              type="category"
-              unit=" generaciones"
-            />
-            <YAxis
-              dataKey={(d: typeof dataEA[number]) => round(d.elem.fitness, 2)}
-              allowDecimals
-              domain={[0, "dataMax"]}
-            />
-            <Tooltip labelStyle={{ color: tooltipLabelColor }} />
-            <Legend />
             <Line
-              type="monotone"
-              dataKey={(d: typeof dataEA[number]) => d.elem.fitness}
-              activeDot={{ r: 8 }}
-              stroke="#666"
-              name="Fitness"
+              type="stepAfter"
+              connectNulls
+              name="PSO"
+              dataKey="pso"
+              stroke="#82ca9d"
             />
           </LineChart>
         </ResponsiveContainer>
