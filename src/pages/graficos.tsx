@@ -71,34 +71,31 @@ const AverageCharts = () => {
   const tooltipLabelColor = useColorModeValue(undefined, "black");
 
   return (
-    <ResponsiveContainer height={500} width="80%">
+    <ResponsiveContainer height={500} width="95%">
       <LineChart data={combinedData}>
         <CartesianGrid strokeDasharray="3 3" />
-        <XAxis
-          axisLine
-          type="number"
-          domain={[0, "dataMax"]}
-          dataKey={(d: typeof combinedData[number]) => d.x}
-        />
+        <XAxis axisLine type="category" domain={[1, "dataMax"]} dataKey="x" />
 
         <YAxis axisLine />
         <Tooltip labelStyle={{ color: tooltipLabelColor }} />
         <Legend />
         <Line
-          type="stepAfter"
+          type="linear"
           connectNulls
           name="EA"
           dataKey="ea"
           stroke="#8884d8"
+          dot={false}
         />
         <Line
-          type="stepAfter"
+          type="linear"
           connectNulls
           name="PSO"
           dataKey="pso"
           stroke="#82ca9d"
+          dot={false}
         />
-        <Brush dataKey={(d: typeof combinedData[number]) => d.x} />
+        <Brush dataKey="x" />
       </LineChart>
     </ResponsiveContainer>
   );
@@ -153,15 +150,10 @@ const BestCharts = () => {
   }, [dataPSO, dataEA]);
 
   return (
-    <ResponsiveContainer height={500} width="80%">
+    <ResponsiveContainer height={500} width="95%">
       <LineChart data={combinedData}>
         <CartesianGrid strokeDasharray="3 3" />
-        <XAxis
-          axisLine
-          type="number"
-          domain={[0, "dataMax"]}
-          dataKey={(d: typeof combinedData[number]) => d.x}
-        />
+        <XAxis axisLine type="number" domain={[1, "dataMax"]} dataKey="x" />
 
         <YAxis axisLine />
         <Tooltip labelStyle={{ color: tooltipLabelColor }} />
@@ -180,7 +172,7 @@ const BestCharts = () => {
           dataKey="pso"
           stroke="#82ca9d"
         />
-        <Brush dataKey={(d: typeof combinedData[number]) => d.x} />
+        <Brush dataKey="x" />
       </LineChart>
     </ResponsiveContainer>
   );
