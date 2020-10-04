@@ -7,7 +7,7 @@ class AppDocument extends Document {
     return (
       <Html>
         <Head>
-          <ColorModeScript defaultColorMode="light" />
+          <ColorModeScript initialColorMode="system" />
         </Head>
         <body>
           <Main />
