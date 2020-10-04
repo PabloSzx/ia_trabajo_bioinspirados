@@ -364,11 +364,12 @@ const PSOPage = () => {
 
   const isTickEnabled = useIsTickEnabled();
 
-  useInterval(() => {
-    if (isTickEnabled) {
+  useInterval(
+    () => {
       tick();
-    }
-  }, 20);
+    },
+    isTickEnabled ? 20 : null
+  );
 
   return (
     <Stack>
