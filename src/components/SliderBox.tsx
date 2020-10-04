@@ -20,6 +20,7 @@ export const SliderBox = ({
   max,
   step,
   colorScheme = "cyan",
+  onChange,
 }: {
   label: string;
   value: number;
@@ -28,6 +29,7 @@ export const SliderBox = ({
   max: number;
   step: number;
   colorScheme?: string;
+  onChange?: () => void;
 }) => {
   const debouncedSetValue = useCallback(debounce(setValue, 200), [setValue]);
   const [UIValue, setUIValue] = useState(value);
@@ -58,6 +60,7 @@ export const SliderBox = ({
           width="90vw"
           value={UIValue}
           onChange={(n) => {
+            onChange?.();
             setUIValue(n);
             debouncedSetValue(n);
           }}

@@ -1,4 +1,4 @@
-import { chunk, compact, minBy, range, sortBy } from "lodash";
+import { chunk, compact, minBy, range, sortBy, sumBy } from "lodash";
 import { Fragment } from "react";
 import { AiOutlinePauseCircle, AiOutlinePlayCircle } from "react-icons/ai";
 import { Circle, Layer, Rect, Stage, Text as KonvaText } from "react-konva";
@@ -99,6 +99,10 @@ export const EAStore = createStore(
       elem: { id: -1, x1: 0, x2: 0, fitness: Infinity },
     },
     bestFitnessHistory: [] as { generacion: number; elem: Elem }[],
+    average: [] as {
+      generacion: number;
+      fitness: number;
+    }[],
   },
   {
     hooks: {
@@ -107,6 +111,9 @@ export const EAStore = createStore(
       },
       useRandom(store) {
         return store.random;
+      },
+      useAverage(store) {
+        return store.average;
       },
     },
     actions: {
@@ -171,6 +178,12 @@ export const EAStore = createStore(
         draft.bestFitnessHistory = [
           {
             ...draft.bestFitness,
+          },
+        ];
+        draft.average = [
+          {
+            generacion: 1,
+            fitness: sumBy(draft.data, (v) => v.fitness) / draft.data.length,
           },
         ];
         draft.idCounter = idCounter;
@@ -248,6 +261,11 @@ export const EAStore = createStore(
             draft.n - draft.nuevos.length
           ),
         ];
+
+        draft.average.push({
+          generacion: draft.generacion,
+          fitness: sumBy(draft.data, (v) => v.fitness) / draft.data.length,
+        });
         draft.selected = [];
         draft.nuevos = [];
       },
@@ -329,6 +347,7 @@ const EAPage = () => {
         max={200}
         step={1}
         colorScheme="orange"
+        onChange={disableTick}
       />
       <SliderBox
         label="K Selección"
@@ -338,6 +357,7 @@ const EAPage = () => {
         max={n}
         step={1}
         colorScheme="red"
+        onChange={disableTick}
       />
       <SliderBox
         label="M Selección Random"
@@ -347,6 +367,7 @@ const EAPage = () => {
         max={kSeleccion}
         step={1}
         colorScheme="teal"
+        onChange={disableTick}
       />
       <SliderBox
         label="Probabilidad Mutación (%)"
@@ -356,6 +377,7 @@ const EAPage = () => {
         max={100}
         step={1}
         colorScheme="purple"
+        onChange={disableTick}
       />
       <SliderBox
         label="Multiplicador Fuerza Mutación"
@@ -365,6 +387,7 @@ const EAPage = () => {
         max={10}
         step={0.1}
         colorScheme="pink"
+        onChange={disableTick}
       />
       <SliderBox
         label="Intervalo de tiempo por paso (ms)"

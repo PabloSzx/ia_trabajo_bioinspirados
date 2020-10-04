@@ -1,4 +1,4 @@
-import { minBy, range } from "lodash";
+import { minBy, range, sumBy } from "lodash";
 import { Fragment, memo } from "react";
 import { AiOutlinePauseCircle, AiOutlinePlayCircle } from "react-icons/ai";
 import {
@@ -31,7 +31,7 @@ const height = 700;
 
 const {
   hooks: { useIsTickEnabled },
-  actions: { toggleEnabledTick },
+  actions: { toggleEnabledTick, disableTick },
 } = createStore(
   {
     isTickEnabled: false,
@@ -73,7 +73,7 @@ export const PSOStore = createStore(
     data: [] as {
       x1: number;
       x2: number;
-      y: number;
+      fitness: number;
       vx1: number;
       vx2: number;
       bestPersonalx1: number;
@@ -89,6 +89,10 @@ export const PSOStore = createStore(
       bestX1: number;
       bestX2: number;
       bestFitness: number;
+    }[],
+    average: [] as {
+      nEvals: number;
+      fitness: number;
     }[],
   },
   {
@@ -114,6 +118,9 @@ export const PSOStore = createStore(
       },
       useRandom(store) {
         return store.random;
+      },
+      useAverage(store) {
+        return store.average;
       },
     },
     actions: {
@@ -151,7 +158,7 @@ export const PSOStore = createStore(
           const x1 = getRandomX();
           const x2 = getRandomX();
 
-          const y = calcRastrigin(x1, x2);
+          const fitness = calcRastrigin(x1, x2);
 
           const bestPersonalx1 = x1;
           const bestPersonalx2 = x2;
@@ -159,7 +166,7 @@ export const PSOStore = createStore(
           return {
             x1,
             x2,
-            y,
+            fitness,
             vx1: 0,
             vx2: 0,
             bestPersonalx1,
@@ -174,6 +181,12 @@ export const PSOStore = createStore(
         draft.bestX2 = bestSingle?.bestPersonalx2 ?? getRandomX();
         draft.bestY = bestSingle?.bestPersonalFitness ?? Infinity;
 
+        draft.average = [
+          {
+            nEvals: 1,
+            fitness: sumBy(draft.data, (v) => v.fitness) / draft.data.length,
+          },
+        ];
         draft.bestHistory = [
           {
             nEvals: 1,
@@ -211,10 +224,10 @@ export const PSOStore = createStore(
             getRandomPercent() * C2 * (draft.bestX2 - x2);
 
           const mod = Math.sqrt(vx1 * vx1 + vx2 * vx2);
-      
-          if (mod > maxVelocity){
-            vx1 = (vx1 / mod) * maxVelocity ;
-            vx2 = (vx2 / mod) * maxVelocity ;
+
+          if (mod > maxVelocity) {
+            vx1 = (vx1 / mod) * maxVelocity;
+            vx2 = (vx2 / mod) * maxVelocity;
           }
 
           x1 += vx1;
@@ -243,11 +256,17 @@ export const PSOStore = createStore(
             fitnessImproved = true;
           }
 
+          value.fitness = fitness;
           value.x1 = x1;
           value.x2 = x2;
           value.vx1 = vx1;
           value.vx2 = vx2;
         }
+
+        draft.average.push({
+          nEvals: draft.nEvals,
+          fitness: sumBy(draft.data, (v) => v.fitness) / draft.data.length,
+        });
 
         if (fitnessImproved) {
           draft.bestHistory.push({
@@ -363,6 +382,7 @@ const PSOPage = () => {
         max={200}
         step={1}
         colorScheme="orange"
+        onChange={disableTick}
       />
 
       <SliderBox
@@ -373,6 +393,7 @@ const PSOPage = () => {
         max={5000}
         step={1}
         colorScheme="green"
+        onChange={disableTick}
       />
 
       <SliderBox
@@ -382,6 +403,7 @@ const PSOPage = () => {
         min={0}
         max={1}
         step={0.1}
+        onChange={disableTick}
       />
 
       <SliderBox
@@ -391,6 +413,7 @@ const PSOPage = () => {
         min={10}
         max={100}
         step={1}
+        onChange={disableTick}
       />
 
       <SliderBox
@@ -400,6 +423,7 @@ const PSOPage = () => {
         min={10}
         max={100}
         step={1}
+        onChange={disableTick}
       />
 
       <Flex justifyContent="center">
